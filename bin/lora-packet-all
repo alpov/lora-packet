@@ -1,0 +1,66 @@
+#!/usr/bin/env node
+
+"use strict";
+
+var cmdlineArgs = process.argv;
+
+var lora_packet = require('../lib/index.js');
+var inputData;
+
+const fs = require('fs');
+const readline = require('readline');
+
+var log_joinreq = fs.createWriteStream('log_joinreq.csv');
+var log_joinacc = fs.createWriteStream('log_joinacc.csv');
+var log_data = fs.createWriteStream('log_data.csv');
+var log_err = fs.createWriteStream('log_err.csv');
+var log_all = fs.createWriteStream('log_all.csv');
+
+  const fileStream = fs.createReadStream(cmdlineArgs[2]);
+ 
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity
+  });
+  // Note: we use the crlfDelay option to recognize all instances of CR LF
+  // ('\r\n') in input.txt as a single line break.
+ 
+  rl.on('line', function(line) {
+    // Each line in input.txt will be successively available here as `line`.
+    line = line.replace('"', '');
+    line = line.replace('"', '');
+    var spl = line.split(',');
+    inputData = Buffer.from(spl[16], 'base64');
+
+    try {
+      var packet = lora_packet.fromWire(inputData);
+      var res = packet.toString();
+      if (packet.isJoinRequestMessage() && packet._packet.DevNonce != "") {
+        log_joinreq.write(spl[0]+";"+spl[16]+";"+res+"\n");
+        log_all.write(spl[0]+";10\n");
+      }
+      else if (packet.isJoinAcceptMessage()) {
+        log_joinacc.write(spl[0]+";"+spl[16]+";"+res+"\n");
+        log_all.write(spl[0]+";20\n");
+      }
+      else if (packet.isDataMessage()) {
+        log_data.write(spl[0]+";"+spl[16]+";"+res+"\n");
+        log_all.write(spl[0]+";30\n");
+      }
+      else {
+        log_err.write(spl[0]+";"+spl[16]+"\n");
+        log_all.write(spl[0]+";40\n");
+      }
+    } catch(e) {
+      log_err.write(spl[0]+";"+spl[16]+"\n");
+        log_all.write(spl[0]+";41\n");
+    }
+  })
+  .on('close', function() {
+    log_joinreq.end();
+    log_joinacc.end();
+    log_data.end();
+    log_err.end();
+    log_all.end();
+  });
+ 
