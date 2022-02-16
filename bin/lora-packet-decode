@@ -61,7 +61,7 @@ if (nwkOption >= 0 && appOption >= 0) {
   res = res.replace(/  FRMPayload = [0-9a-fA-F]+/, '$&\n'+
                     "             Plaintext = "+plaintext+" ('"+asAscii(plaintext)+"')");
 }
-console.log (arg+";"+res);
+console.log (res);
 
 function asHexString(buf) {
     return buf.toString('hex').toUpperCase();
